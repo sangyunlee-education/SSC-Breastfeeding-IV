@@ -54,9 +54,9 @@ This study investigates the causal effect of immediate skin-to-skin contact (SSC
 ## Citation
 If you use this repository in your research or projects, please cite the associated study:
 
-> **Author(s)**: [Your Name]  
+> **Author(s)**: [Sangyun Lee, Yongnam Kim]  
 > **Title**: *The Effect of Immediate Skin-to-Skin Contact on Exclusive Breastfeeding: An Instrumental Variable Approach*  
-> **Year**: 2024  
+> **Year**: 2025  
 > **DOI**: [Add if available]
 
 ---
@@ -70,5 +70,5 @@ If you use this repository in your research or projects, please cite the associa
 
 ## Contact
 For questions or collaborations, please contact:
-[Your Name]  
-[Your Email Address]
+[Sangyun Lee]  
+[lee10260@snu.ac.kr]
