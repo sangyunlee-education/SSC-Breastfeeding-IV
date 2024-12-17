@@ -24,7 +24,7 @@ The data that support the findings of this study are openly available at:
 
 ## **File Structure**  
 
-- **main_analysis.R**: The complete R code for the analysis.  
+- **ssc_breastfeeding.R**: The complete R code for the analysis.  
 
 ---
 
