@@ -1,44 +1,34 @@
-# Required Libraries
+# Required Libraries ------------------------------------------------------
 library(dplyr)
 library(ivreg)
 library(sandwich)
 library(iv.sensemakr)
 
-# Reproducibility
+# Reproducibility ---------------------------------------------------------
 set.seed(123)
 
-# Data Preprocessing -------------------------------------------------------
+# Data Preprocessing ------------------------------------------------------
 
-# Load datasets
-data1 <- read.csv("baseline survey.csv")
-data2 <- read.csv("wave 1 main survey.csv")
-
-# Select relevant covariates
-data1 <- data1 %>%
+## Load datasets
+data1 <- read.csv("baseline survey.csv") %>%
   select(HID, MAGE, CBIRTH_O, MPGN04, MPGN06, MPGN08, ARA01, MEDU, TWIN)
 
-# Select treatment and outcome variables
-data2 <- data2 %>%
+data2 <- read.csv("wave 1 main survey.csv") %>%
   select(HID, MPGN12, MBRF03, MBRF06_01, MBRF06_02, MBRF06_03)
 
-# Merge datasets by HID
-data <- merge(data1, data2, by = "HID")
-
-# Rename and select variables for analysis
-data <- data %>%
+## Merge datasets by HID and rename variables
+data <- merge(data1, data2, by = "HID") %>%
   select(MPGN12, MBRF03, MBRF06_01, MBRF06_02, MBRF06_03,
          MAGE, CBIRTH_O, MPGN04, MPGN06, MPGN08, ARA01, MEDU, TWIN) %>%
   rename(Z = MPGN12, A = MBRF03, 
          Y1 = MBRF06_01, Y2 = MBRF06_02, Y3 = MBRF06_03,
          C1 = MAGE, C2 = CBIRTH_O, C3 = MPGN04, C4 = MPGN06, 
-         C5 = MPGN08, C6 = ARA01, C7 = MEDU, C8 = TWIN)
-
-# Filter out cesarean delivery responses
-data <- data %>% filter(Z != 2)
+         C5 = MPGN08, C6 = ARA01, C7 = MEDU, C8 = TWIN) %>%
+  filter(Z != 2) ### Filter out cesarean delivery responses
 
 # Recode Variables --------------------------------------------------------
 
-# Recode IV, treatment, and outcomes as binary
+## Binary recoding for IV, treatment, outcomes
 data <- data %>%
   mutate(
     Z = ifelse(Z == 1, 1, 0),
@@ -48,11 +38,11 @@ data <- data %>%
     Y3 = ifelse(Y3 == 1, 1, 0)
   )
 
-# Recode covariates
+## Recode covariates
 data <- data %>%
   mutate(
-    C2 = ifelse(C2 %in% c(4, 5), 4, C2),  # Birth order
-    C7 = case_when(                      # Education level
+    C2 = ifelse(C2 %in% c(4, 5), 4, C2),
+    C7 = case_when(
       C7 %in% c(2, 3) ~ 1,
       C7 == 4 ~ 2,
       C7 %in% c(5, 6) ~ 3,
@@ -60,8 +50,6 @@ data <- data %>%
     ),
     across(c(C2, C3, C4, C5, C6, C7, C8), as.factor)
   )
-
-
 
 # Table 1: Summary Statistics ---------------------------------------------
 
@@ -72,7 +60,7 @@ table_data <- data %>%
     First_birth_order = sum(C2 == 1, na.rm = TRUE),
     Second_birth_order = sum(C2 == 2, na.rm = TRUE),
     Third_birth_order = sum(C2 == 3, na.rm = TRUE),
-    Fourth_or_more = sum(as.numeric(C2) >= 4, na.rm = TRUE),  # 숫자형으로 변환
+    Fourth_or_more = sum(as.numeric(C2) >= 4, na.rm = TRUE),
     Natural_conception = sum(C3 == 0, na.rm = TRUE),
     ART_IUI_IVF = sum(C3 == 1, na.rm = TRUE),
     Childbirth_education = sum(C4 == 1, na.rm = TRUE),
@@ -88,8 +76,7 @@ table_data <- data %>%
   ) %>%
   mutate(A = ifelse(A == 0, "No skin-to-skin", "Skin-to-skin"))
 
-
-# Calculate p-values
+## Calculate p-values for covariates
 p_values <- list(
   Age = t.test(C1 ~ A, data = data)$p.value,
   Birth_order = chisq.test(data$C2, data$A)$p.value,
@@ -101,94 +88,60 @@ p_values <- list(
   Twin = chisq.test(data$C8, data$A)$p.value
 )
 
-# Main Analysis: Table 2 --------------------------------------------
+# Main Analysis: Table 2 --------------------------------------------------
 
-## OLS
-round(summary(lm(Y1 ~ A, data=data))$coef[2,c(1,4)], 3)
-round(confint(lm(Y1 ~ A, data=data))[2,], 3)
-round(summary(lm(Y2 ~ A, data=data))$coef[2,c(1,4)], 3)
-round(confint(lm(Y2 ~ A, data=data))[2,], 3)
-round(summary(lm(Y3 ~ A, data=data))$coef[2,c(1,4)], 3)
-round(confint(lm(Y3 ~ A, data=data))[2,], 3)
+## Helper function for OLS models
+run_ols <- function(outcome, covars = NULL) {
+  formula <- as.formula(paste(outcome, "~ A", if (!is.null(covars)) paste("+", covars)))
+  model <- lm(formula, data = data)
+  list(
+    coef = round(summary(model)$coef[2, c(1, 4)], 3),
+    conf = round(confint(model)[2, ], 3)
+  )
+}
 
-round(summary(lm(Y1 ~ A +C1+C2+C3+C4+C5+C6+C7+C8, data=data))$coef[2,c(1,4)], 3)
-round(confint(lm(Y1 ~ A +C1+C2+C3+C4+C5+C6+C7+C8, data=data))[2,], 3)
-round(summary(lm(Y2 ~ A +C1+C2+C3+C4+C5+C6+C7+C8, data=data))$coef[2,c(1,4)], 3)
-round(confint(lm(Y2 ~ A +C1+C2+C3+C4+C5+C6+C7+C8, data=data))[2,], 3)
-round(summary(lm(Y3 ~ A +C1+C2+C3+C4+C5+C6+C7+C8, data=data))$coef[2,c(1,4)], 3)
-round(confint(lm(Y3 ~ A +C1+C2+C3+C4+C5+C6+C7+C8, data=data))[2,], 3)
+## Run OLS Models
+covariates <- "C1+C2+C3+C4+C5+C6+C7+C8"
+ols_results <- lapply(c("Y1", "Y2", "Y3"), function(y) {
+  list(
+    unadjusted = run_ols(y),
+    adjusted = run_ols(y, covariates)
+  )
+})
 
-## 2SLS
-
-### unadjusted models
-ivreg <- ivreg(Y1 ~ A
-               | Z , data = data)
-round(summary(ivreg, vcov = sandwich, df = Inf, diagnostics = TRUE)$coefficients[2,c(1,4)],3)
-round(confint(ivreg)[2,],3)
-
-ivreg <- ivreg(Y2 ~ A
-               | Z , data = data)
-round(summary(ivreg, vcov = sandwich, df = Inf, diagnostics = TRUE)$coefficients[2,c(1,4)],3)
-round(confint(ivreg)[2,],3)
-
-ivreg <- ivreg(Y3 ~ A
-               | Z , data = data)
-round(summary(ivreg, vcov = sandwich, df = Inf, diagnostics = TRUE)$coefficients[2,c(1,4)],3)
-round(confint(ivreg)[2,],3)
-
-
+## Helper function for IV models
+run_iv <- function(outcome, covars = NULL) {
+  if (is.null(covars)) {
+    formula <- as.formula(paste(outcome, "~ A | Z"))
+  } else {
+    formula <- as.formula(paste(outcome, "~ A +", covars, "| Z +", covars))
+  }
+  model <- ivreg(formula, data = data)
+  list(
+    coef = round(summary(model, vcov = sandwich, df = Inf)$coefficients[2, c(1, 4)], 3),
+    conf = round(confint(model)[2, ], 3)
+  )
+}
 
 
-### adjusted models
-ivreg <- ivreg(Y1 ~ A+C1+C2+C3+C4+C5+C6+C7+C8
-               | Z+C1+C2+C3+C4+C5+C6+C7+C8 , data = data)
-round(summary(ivreg, vcov = sandwich, df = Inf, diagnostics = TRUE)$coefficients[2,c(1,4)],3)
-round(confint(ivreg)[2,],3)
-
-
-ivreg <- ivreg(Y2 ~ A+C1+C2+C3+C4+C5+C6+C7+C8
-               | Z+C1+C2+C3+C4+C5+C6+C7+C8 , data = data)
-round(summary(ivreg, vcov = sandwich, df = Inf, diagnostics = TRUE)$coefficients[2,c(1,4)],3)
-round(confint(ivreg)[2,],3)
-
-
-ivreg <- ivreg(Y3 ~ A+C1+C2+C3+C4+C5+C6+C7+C8
-               | Z+C1+C2+C3+C4+C5+C6+C7+C8 , data = data)
-round(summary(ivreg, vcov = sandwich, df = Inf, diagnostics = TRUE)$coefficients[2,c(1,4)],3)
-round(confint(ivreg)[2,],3)
-
-
+## Run IV Models
+iv_results <- lapply(c("Y1", "Y2", "Y3"), function(y) {
+  list(
+    unadjusted = run_iv(y),
+    adjusted = run_iv(y, covariates)
+  )
+})
 
 # Sensitivity Analysis: Table 3 -------------------------------------------
 
-## 1-month
-y <- data$Y1  # outcome
-d <- data$A   # treatment
-z <- as.numeric(data$Z) # instrument
-x <- model.matrix( ~ C1+C2+C3+C4+C5+C6+C7+C8, data = data) # covariates
+run_sensitivity <- function(outcome) {
+  y <- data[[outcome]]
+  d <- data$A
+  z <- as.numeric(data$Z)
+  x <- model.matrix(~ C1+C2+C3+C4+C5+C6+C7+C8, data = data)
+  mod.fit <- iv_fit(y, d, z, x)
+  IV.sens <- sensemakr(mod.fit, benchmark_covariates = c("C81"), kz = 1:3)
+  round(summary(IV.sens)$bounds$iv[, c(4, 5)], 3)
+}
 
-mod.fit <- iv_fit(y,d,z,x)
-IV.sens <- sensemakr(mod.fit, benchmark_covariates = c("C81"), kz = 1:3)
-round(summary(IV.sens)$bounds$iv[,c(4,5)],3)
-
-
-## 2-month
-y <- data$Y2  # outcome
-d <- data$A   # treatment
-z <- as.numeric(data$Z) # instrument
-x <- model.matrix( ~ C1+C2+C3+C4+C5+C6+C7+C8, data = data) # covariates
-
-mod.fit <- iv_fit(y,d,z,x)
-IV.sens <- sensemakr(mod.fit, benchmark_covariates = c("C81"), kz = 1:3)
-round(summary(IV.sens)$bounds$iv[,c(4,5)],3)
-
-
-## 3-month
-y <- data$Y3  # outcome
-d <- data$A   # treatment
-z <- as.numeric(data$Z) # instrument
-x <- model.matrix( ~ C1+C2+C3+C4+C5+C6+C7+C8, data = data) # covariates
-
-mod.fit <- iv_fit(y,d,z,x)
-IV.sens <- sensemakr(mod.fit, benchmark_covariates = c("C81"), kz = 1:3)
-round(summary(IV.sens)$bounds$iv[,c(4,5)],3)
+sensitivity_results <- lapply(c("Y1", "Y2", "Y3"), run_sensitivity)
