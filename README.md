@@ -1,6 +1,6 @@
 # The Effect of Immediate Skin-to-Skin Contact on Exclusive Breastfeeding: An Instrumental Variable Approach
 
-This repository contains R code to analyze the causal effect of immediate skin-to-skin contact (SSC) at birth on exclusive breastfeeding outcomes using Instrumental Variable (IV) methods. The analysis also includes a sensitivity analysis to assess the robustness of the IV estimates under hypothetical violations of the exclusion restriction.
+This repository contains R code to analyze the causal effect of immediate skin-to-skin contact (SSC) on exclusive breastfeeding using Instrumental Variable (IV) methods. The analysis also includes a sensitivity analysis to assess the robustness of the IV estimates under hypothetical violations of the exclusion restriction.
 
 ---
 
